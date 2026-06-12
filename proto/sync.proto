@@ -1,0 +1,90 @@
+syntax = "proto3";
+package zenth;
+
+// ── SYNC_PUSH_BLOB (21) ──────────────────────────────────────────────────────
+
+message SyncPushBlobRequest {
+    bytes for_device_dilithium_pubkey = 1; // pubkey du NOUVEL appareil (destinataire)
+    bytes ciphertext                  = 2; // ciphertext Kyber (Sync Key chiffrée)
+    bytes signature                   = 3; // signature Dilithium de l'APPAREIL DE CONFIANCE sur ciphertext
+    uint64 ttl_secs                   = 4; // durée de vie (max 3600)
+}
+
+message SyncPushBlobResponse {
+    bool   success       = 1;
+    string error_message = 2;
+}
+
+// ── SYNC_FETCH_BLOB (22) ─────────────────────────────────────────────────────
+
+message SyncFetchBlobRequest {
+    bytes for_device_dilithium_pubkey = 1; // pubkey du NOUVEL appareil (clé primaire)
+}
+
+message SyncFetchBlobResponse {
+    bool   success       = 1;
+    bytes  ciphertext    = 2;
+    bytes  signature     = 3;
+    string error_message = 4;
+}
+
+// ── SYNC_DELETE_BLOB (23) ────────────────────────────────────────────────────
+
+message SyncDeleteBlobRequest {
+    bytes for_device_dilithium_pubkey = 1;
+}
+
+message SyncDeleteBlobResponse {
+    bool   success       = 1;
+    string error_message = 2;
+}
+
+// ── RELAY_PUSH (24) ──────────────────────────────────────────────────────────
+// Pousse un message relayé chiffré dans la boîte mail DHT du device destinataire.
+
+message RelayPushRequest {
+    bytes  for_device_dilithium_pubkey = 1; // clé DHT = mailbox du device destinataire
+    bytes  ciphertext                  = 2; // ChaCha20-Poly1305(sync_key, nonce, payload_json)
+    bytes  nonce                       = 3; // 12 octets aléatoires
+    uint64 ttl_secs                    = 4; // durée de vie (max 86400)
+}
+
+message RelayPushResponse {
+    bool   success       = 1;
+    int64  relay_id      = 2; // séquence attribuée par le serveur
+    string error_message = 3;
+}
+
+// ── RELAY_FETCH (25) ─────────────────────────────────────────────────────────
+// Récupère les messages relayés depuis le dernier curseur connu.
+
+message RelayFetchRequest {
+    bytes  for_device_dilithium_pubkey = 1; // notre propre clé (notre mailbox)
+    int64  since_id                    = 2; // id > since_id (0 = tout récupérer)
+    uint32 limit                       = 3; // max entrées (défaut 50)
+}
+
+message RelayEntry {
+    int64 id        = 1;
+    bytes ciphertext = 2;
+    bytes nonce      = 3;
+}
+
+message RelayFetchResponse {
+    bool             success       = 1;
+    repeated RelayEntry entries    = 2;
+    string           error_message = 3;
+}
+
+// ── RELAY_ACK (26) ───────────────────────────────────────────────────────────
+// Supprime les entrées traitées (up_to_id inclus) de la mailbox.
+
+message RelayAckRequest {
+    bytes for_device_dilithium_pubkey = 1;
+    int64 up_to_id                    = 2;
+}
+
+message RelayAckResponse {
+    bool   success       = 1;
+    string error_message = 2;
+}

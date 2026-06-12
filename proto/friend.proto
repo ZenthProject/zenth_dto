@@ -1,0 +1,85 @@
+// Friend lookup and fetch protocol
+syntax = "proto3";
+
+package zenth;
+
+import "keys.proto";
+import "auth.proto";
+
+// Request to lookup a user by their hash
+message LookupUserRequest {
+    bytes requester_hash = 1;
+    bytes target_hash = 2;
+    uint64 timestamp = 3;
+    bytes dilithium_signature = 4;
+}
+
+// Response containing user's public info (PreKeyBundle)
+message LookupUserResponse {
+    bool found = 1;
+    bytes user_hash = 2;
+    PreKeyBundle pre_key_bundle = 3;
+    string error_message = 4;
+}
+
+// Request to fetch pending friend requests
+message FetchFriendRequestsRequest {
+    bytes user_hash = 1;
+    bytes session_token = 2;
+    uint64 since_timestamp = 3;
+    uint64 timestamp = 4;
+    bytes dilithium_signature = 5;
+}
+
+// Response with list of pending friend requests
+message FetchFriendRequestsResponse {
+    repeated FriendRequest requests = 1;
+    uint64 timestamp = 2;
+}
+
+// Friend info for local storage (not sent over network)
+message StoredFriendInfo {
+    bytes user_hash = 1;
+    string pseudo = 2;
+    IdentityKey identity_key = 3;
+    KEMPublicKey kyber_key = 4;
+    bytes x25519_key = 5;
+    bool verified = 6;
+    bool blocked = 7;
+    uint64 added_at = 8;
+}
+
+// ============================================================================
+// WebSocket Notifications (real-time push to clients)
+// ============================================================================
+
+// Notification types for WebSocket messages
+enum NotificationType {
+    NOTIFICATION_UNKNOWN = 0;
+    FRIEND_REQUEST_RECEIVED = 1;
+    FRIEND_REQUEST_ACCEPTED = 2;
+    FRIEND_REQUEST_REJECTED = 3;
+    MESSAGE_RECEIVED = 4;
+}
+
+// WebSocket notification envelope
+message WsNotification {
+    NotificationType notification_type = 1;
+    uint64 timestamp = 2;
+    bytes payload = 3;  // Type-specific payload (FriendRequest, FriendResponse, etc.)
+}
+
+// Notification when a friend request is received
+message FriendRequestNotification {
+    bytes requester_hash_id = 1;
+    bytes pre_key_bundle = 2;
+    bytes encrypted_message = 3;
+    uint64 timestamp = 4;
+}
+
+// Notification when a message is received (for WebSocket push)
+message MessageNotification {
+    bytes sender_hash_id = 1;
+    bytes message_id = 2;
+    uint64 timestamp = 3;
+}

@@ -1,0 +1,38 @@
+// Zenth account recovery protocol
+// Method 29: PUBLISH_RECOVERY_KEY  — publish/update recovery Dilithium2 pubkey
+// Method 30: RECOVERY_CLAIM        — reclaim account using recovery privkey
+syntax = "proto3";
+
+package zenth;
+
+// Publish or update the recovery public key (authenticated with main identity key).
+// Called once after init_recovery_key, and on each device that wants to register the key.
+message PublishRecoveryKeyRequest {
+  bytes  username_hash              = 1;
+  bytes  recovery_dilithium_pubkey  = 2;
+  bytes  auth_signature             = 3;  // Dilithium2 sign(main_privkey, username_hash || recovery_pubkey || timestamp)
+  uint64 timestamp                  = 4;
+}
+
+message PublishRecoveryKeyResponse {
+  bool   success       = 1;
+  string error_message = 2;
+}
+
+// Submit a recovery claim: replaces the main identity key (and pre-key bundle)
+// authenticated solely by the recovery Dilithium2 private key.
+// On success the server issues a new session token so the client can re-register keys.
+message RecoveryClaimRequest {
+  bytes  username_hash                     = 1;
+  bytes  new_identity_dilithium_pubkey     = 2;
+  bytes  new_identity_signature            = 3;  // sign(new_identity_privkey, username_hash || timestamp)
+  bytes  new_pre_key_bundle                = 4;
+  bytes  recovery_signature                = 5;  // sign(recovery_privkey, username_hash || new_identity_dilithium_pubkey || timestamp)
+  uint64 timestamp                         = 6;
+}
+
+message RecoveryClaimResponse {
+  bool   success       = 1;
+  bytes  session_token = 2;
+  string error_message = 3;
+}

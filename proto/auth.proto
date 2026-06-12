@@ -1,0 +1,121 @@
+// Zenth authentication using zero-knowledge proofs
+syntax = "proto3";
+
+package zenth;
+
+// Zero-knowledge proof algorithms supported
+enum ZKPType {
+  ZKP_TYPE_UNKNOWN = 0;
+  PLONK            = 1;
+  STARK            = 2;
+  GROTH16          = 3;
+}
+
+// Authentication challenge issued by server
+message AuthChallenge {
+  bytes   challenge_id        = 1;
+  bytes   nonce               = 2;
+  ZKPType required_proof_type = 3;
+  bytes   public_parameters   = 4;
+  uint64  timestamp           = 5;
+  uint32  difficulty          = 6;
+}
+
+// Zero-knowledge proof response to challenge
+message AuthProof {
+  bytes   challenge_id  = 1;
+  bytes   user_hash_id  = 2;
+  ZKPType proof_type    = 3;
+  bytes   proof         = 4;
+  bytes   public_inputs = 5;
+  uint64  timestamp     = 6;
+}
+
+// User registration with ZKP and Dilithium identity
+message RegistrationRequest {
+  bytes   username_hash          = 1;
+  bytes   pre_key_bundle         = 2;
+  ZKPType proof_type             = 3;
+  bytes   password_commitment    = 4;
+  bytes   initial_proof          = 5;
+  bytes   identity_key_dilithium = 6;
+  bytes   identity_signature     = 7;
+  uint64  timestamp              = 8;
+}
+
+// Registration outcome with challenge parameters
+message RegistrationResponse {
+  bool   success              = 1;
+  bytes  user_hash_id         = 2;
+  bytes  challenge_parameters = 3;
+  string error_message        = 4;
+}
+
+// Login request with optional challenge request or proof
+message LoginRequest {
+  bytes     user_hash_id      = 1;
+  bool      request_challenge = 2;
+  AuthProof proof             = 3;
+  uint64    timestamp         = 4;
+  string    app_version       = 5; // e.g. "1.3.0" — checked before processing
+}
+
+// Returned when client version is below minimum supported
+message VersionOutdated {
+  string min_version    = 1; // minimum version accepted by the network
+  string latest_version = 2; // latest available version
+}
+
+// Login response with session token or challenge
+message LoginResponse {
+  bool             success          = 1;
+  AuthChallenge    challenge        = 2;
+  bytes            session_token    = 3;
+  uint64           session_expiry   = 4;
+  string           error_message    = 5;
+  VersionOutdated  version_outdated = 6; // set when app_version < min_version
+}
+
+// Peer-to-peer friend request with pre-key bundle
+message FriendRequest {
+  bytes  requester_hash_id   = 1;
+  bytes  target_hash_id      = 2;
+  bytes  pre_key_bundle      = 3;
+  bytes  dilithium_signature = 4;
+  bytes  encrypted_message   = 5;
+  uint64 timestamp           = 6;
+}
+
+// Friend request response with acceptance status
+message FriendResponse {
+  bytes  responder_hash_id   = 1;
+  bytes  requester_hash_id   = 2;
+  bool   accepted            = 3;
+  bytes  pre_key_bundle      = 4;
+  bytes  dilithium_signature = 5;
+  uint64 timestamp           = 6;
+}
+
+message FetchFriendResponsesRequest {
+  bytes  user_hash           = 1;
+  uint64 since_timestamp     = 2;
+  uint64 timestamp           = 3;
+  bytes  dilithium_signature = 4;
+}
+
+message FetchFriendResponsesResponse {
+  repeated FriendResponse responses = 1;
+  uint64                  timestamp = 2;
+}
+
+// Account deletion request - authenticated with Dilithium signature
+message DeleteRequest {
+  bytes  user_hash_id        = 1;
+  bytes  dilithium_signature = 2;  // sign(user_hash_id || timestamp)
+  uint64 timestamp           = 3;
+}
+
+message DeleteResponse {
+  bool   success       = 1;
+  string error_message = 2;
+}

@@ -1,0 +1,69 @@
+// Zenth DHT - Requête unifiée avec méthode cachée
+// La méthode est invisible de l'extérieur car chiffrée par TLS
+syntax = "proto3";
+
+package zenth;
+
+import "auth.proto";
+import "keys.proto";
+
+// Méthodes disponibles sur le DHT
+enum Method {
+    METHOD_UNKNOWN = 0;
+    REGISTER = 1;
+    LOGIN = 2;
+    DELETE = 3;
+    BLOCK = 4;
+    GROUP = 5;
+    CONTACT = 6;
+    REPORT = 7;
+    // Friend management
+    LOOKUP_USER = 8;
+    SEND_FRIEND_REQUEST = 9;
+    FETCH_FRIEND_REQUESTS = 10;
+    RESPOND_FRIEND_REQUEST = 11;
+    // Messaging
+    SEND_MESSAGE = 12;
+    FETCH_MESSAGES = 13;
+    // Friend responses
+    FETCH_FRIEND_RESPONSES = 14;
+    // Pre-keys management
+    UPLOAD_PREKEYS = 15;
+    FETCH_PREKEY_BUNDLE = 16;
+    CHECK_PREKEY_COUNT = 17;
+    REPLENISH_PREKEYS = 18;
+    // Update distribution
+    GET_UPDATE_MANIFEST = 19;
+    GET_UPDATE_CHUNK = 20;
+    // Multi-device sync (pairing blobs)
+    SYNC_PUSH_BLOB = 21;
+    SYNC_FETCH_BLOB = 22;
+    SYNC_DELETE_BLOB = 23;
+    // Multi-device relay (message forwarding)
+    RELAY_PUSH = 24;
+    RELAY_FETCH = 25;
+    RELAY_ACK = 26;
+    FETCH_MY_ACCEPTED = 27;
+    ACK_MESSAGE = 28;
+    // Account recovery
+    PUBLISH_RECOVERY_KEY = 29;
+    RECOVERY_CLAIM = 30;
+}
+
+// Requête DHT unifiée - un seul endpoint, méthode cachée dans le payload
+message DhtRequest {
+    Method method = 1;
+    bytes payload = 2;  // Message protobuf sérialisé selon la méthode
+    uint64 timestamp = 3;
+    bytes request_id = 4;  // ID unique pour tracking
+}
+
+// Réponse DHT unifiée
+message DhtResponse {
+    bool success = 1;
+    Method method = 2;  // Echo de la méthode pour vérification
+    bytes payload = 3;  // Réponse protobuf sérialisée selon la méthode
+    string error_message = 4;
+    uint64 timestamp = 5;
+    bytes request_id = 6;  // Echo du request_id
+}

@@ -1,0 +1,171 @@
+// Decentralized peer-to-peer network transport
+syntax = "proto3";
+
+package zenth;
+
+import "message.proto";
+import "group.proto";
+import "keys.proto";
+import "update.proto";
+
+// Network packet types for routing
+enum PacketType {
+  PACKET_TYPE_UNKNOWN      = 0;
+  DIRECT_MESSAGE           = 1;
+  GROUP_MESSAGE            = 2;
+  KEY_EXCHANGE             = 3;
+  PRESENCE                 = 4;
+  ACK                      = 5;
+  SYNC                     = 6;
+  UPDATE_MANIFEST_REQUEST  = 7;
+  UPDATE_MANIFEST_RESPONSE = 8;
+  UPDATE_CHUNK_REQUEST     = 9;
+  UPDATE_CHUNK_RESPONSE    = 10;
+}
+
+// Base network packet with signature verification
+message NetworkPacket {
+  uint32 version = 1;
+  PacketType packet_type = 2;
+  bytes packet_id = 3;
+  bytes sender_hash_id = 4;
+
+  oneof payload {
+    ZenthSignalEnvelope direct_message = 5;
+    GroupMessage group_message = 6;
+    KeyExchangePacket key_exchange = 7;
+    PresencePacket presence = 8;
+    MessageAck ack = 9;
+    SyncPacket sync = 10;
+  }
+
+  uint64 timestamp = 11;
+  uint32 ttl = 12;
+  uint32 priority = 13;
+  bytes dilithium_signature = 14;
+}
+
+// Initial key exchange handshake
+message KeyExchangePacket {
+  bytes initiator_hash_id = 1;
+  bytes responder_hash_id = 2;
+  bytes initiator_bundle = 3;
+  bytes responder_bundle = 4;
+  bytes initiator_signature = 5;
+  bytes responder_signature = 6;
+  uint64 timestamp = 7;
+}
+
+// User presence and online status broadcast
+message PresencePacket {
+  bytes user_hash_id = 1;
+
+  enum PresenceStatus {
+    STATUS_UNKNOWN = 0;
+    ONLINE = 1;
+    AWAY = 2;
+    BUSY = 3;
+    OFFLINE = 4;
+  }
+
+  PresenceStatus status = 2;
+  repeated bytes connected_peers = 3;
+  repeated string capabilities = 4;
+  uint64 timestamp = 5;
+  bytes dilithium_signature = 6;
+}
+
+// State synchronization request for decentralized network
+message SyncPacket {
+  bytes requester_hash_id = 1;
+
+  enum SyncType {
+    SYNC_TYPE_UNKNOWN = 0;
+    FULL_SYNC = 1;
+    PARTIAL_SYNC = 2;
+    MESSAGE_SYNC = 3;
+    GROUP_SYNC = 4;
+    CONTACT_SYNC = 5;
+  }
+
+  SyncType sync_type = 2;
+  uint64 last_sync_timestamp = 3;
+  bytes encrypted_sync_data = 4;
+  uint64 timestamp = 5;
+}
+
+// Synchronization response with missing data
+message SyncResponse {
+  bytes responder_hash_id = 1;
+  bytes requester_hash_id = 2;
+  repeated NetworkPacket missing_packets = 3;
+  repeated GroupState updated_groups = 4;
+  repeated PreKeyBundle new_contacts = 5;
+  uint64 sync_timestamp = 6;
+  bytes dilithium_signature = 7;
+}
+
+// DHT-style peer discovery message
+message PeerDiscoveryMessage {
+  bytes searcher_hash_id = 1;
+  bytes target_hash_id = 2;
+  repeated PeerInfo known_peers = 3;
+  uint64 timestamp = 4;
+}
+
+// Network peer information and reputation
+message PeerInfo {
+  bytes user_hash_id = 1;
+  repeated string network_addresses = 2;
+  bytes connection_public_key = 3;
+  uint64 last_seen = 4;
+  uint32 reputation_score = 5;
+  bytes dilithium_signature = 6;
+}
+
+// Onion-style routing request with loop prevention
+message RoutingRequest {
+  bytes packet_id = 1;
+  bytes destination_hash_id = 2;
+  bytes payload = 3;
+  uint32 hop_count = 4;
+  uint32 max_hops = 5;
+  repeated bytes visited_peers = 6;
+  uint64 timestamp = 7;
+}
+
+// Chunked file transfer over P2P network
+message FileTransferMessage {
+  bytes transfer_id = 1;
+  bytes sender_hash_id = 2;
+  bytes recipient_hash_id = 3;
+
+  enum TransferStatus {
+    STATUS_UNKNOWN = 0;
+    OFFER = 1;
+    ACCEPT = 2;
+    REJECT = 3;
+    CHUNK = 4;
+    COMPLETE = 5;
+    ERROR = 6;
+  }
+
+  TransferStatus status = 4;
+  string filename = 5;
+  uint64 file_size = 6;
+  string mime_type = 7;
+  bytes file_hash = 8;
+  uint32 chunk_index = 9;
+  uint32 total_chunks = 10;
+  bytes chunk_data = 11;
+  uint64 timestamp = 12;
+  bytes dilithium_signature = 13;
+}
+
+// Multi-device message synchronization
+message MultiDeviceMessage {
+  bytes user_hash_id = 1;
+  repeated bytes device_ids = 2;
+  repeated bytes encrypted_for_devices = 3;
+  uint64 timestamp = 4;
+}

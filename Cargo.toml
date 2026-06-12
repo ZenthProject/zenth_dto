@@ -1,0 +1,20 @@
+[package]
+name = "zenth_dto"
+version = "0.1.0"
+edition = "2024"
+authors = ["Zenth Team"]
+description = "Zenth Hybrid Protocol - DTO and Protocol Buffers"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+prost = "0.14.1"
+tokio = { version = "1.47.1", features = ["rt-multi-thread"] }
+tonic = "0.14.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+base64 = "0.22"
+rand = "0.8"
+sha2 = "0.10"
+
+[build-dependencies]
+tonic-prost-build = "0.14.2"

@@ -1,0 +1,157 @@
+// Triple-layer encrypted message format with post-quantum ratchet
+syntax = "proto3";
+
+package zenth;
+
+import "keys.proto";
+
+// Message types in the protocol flow
+enum MessageType {
+  MESSAGE_TYPE_UNKNOWN = 0;
+  PREKEY_MESSAGE = 1;
+  REGULAR_MESSAGE = 2;
+  REKEY_MESSAGE = 3;
+}
+
+// Triple-layer symmetric encryption algorithms
+enum SymmetricLayer {
+  SYMMETRIC_UNKNOWN = 0;
+  SERPENT_CBC = 1;
+  AES_256_GCM = 2;
+  CHACHA20_POLY1305 = 3;
+}
+
+// Double Ratchet header with post-quantum extension
+message RatchetHeader {
+  bytes sender_ratchet_key = 1;
+  uint32 previous_counter = 2;
+  uint32 counter = 3;
+  bytes pq_ciphertext = 4;
+}
+
+// Innermost encryption layer using ChaCha20-Poly1305
+message Layer3Ciphertext {
+  bytes ciphertext = 1;
+  bytes nonce = 2;
+  bytes poly1305_tag = 3;
+  bytes plaintext_hash = 4;
+}
+
+// Middle encryption layer using AES-256-GCM
+message Layer2Ciphertext {
+  bytes ciphertext = 1;
+  bytes nonce = 2;
+  bytes gcm_tag = 3;
+  Layer3Ciphertext layer3 = 4;
+}
+
+// Outer encryption layer using Serpent-CBC
+message Layer1Ciphertext {
+  bytes ciphertext = 1;
+  bytes iv = 2;
+  bytes hmac = 3;
+  Layer2Ciphertext layer2 = 4;
+}
+
+// Symmetric key wrapped by Double Ratchet
+message LayerKeyWrap {
+  SymmetricLayer layer_type = 1;
+  bytes wrapped_key = 2;
+  bytes key_id = 3;
+}
+
+// Message body encrypted with Double Ratchet
+message EncryptedMessageBody {
+  MessageType message_type = 1;
+  RatchetHeader ratchet_header = 2;
+  repeated LayerKeyWrap layer_keys = 3;
+  Layer1Ciphertext encrypted_layers = 4;
+  bytes encrypted_metadata = 5;
+}
+
+// Initial pre-key message establishing session
+message PreKeyMessage {
+  uint32 pre_key_id = 1;
+  uint32 signed_pre_key_id = 2;
+  bytes base_key = 3;
+  IdentityKey identity_key = 4;
+  uint32 pq_pre_key_id = 5;
+  bytes pq_ciphertext = 6;
+  EncryptedMessageBody message = 7;
+}
+
+// Complete message envelope with signatures
+message ZenthSignalEnvelope {
+  uint32 version = 1;
+  bytes sender_hash_id = 2;
+  bytes recipient_hash_id = 3;
+
+  oneof content {
+    PreKeyMessage prekey_message = 4;
+    EncryptedMessageBody regular_message = 5;
+  }
+
+  bytes dilithium_signature = 6;
+  uint64 timestamp = 7;
+  bytes message_id = 8;
+  uint32 sequence_number = 9;
+}
+
+// Group message using sender key distribution
+message GroupMessage {
+  bytes group_id = 1;
+  bytes sender_hash_id = 2;
+  repeated bytes encrypted_message_key = 3;
+  repeated bytes recipient_hash_ids = 4;
+  EncryptedMessageBody encrypted_message = 5;
+  bytes lms_signature = 6;
+  uint64 timestamp = 7;
+  bytes message_id = 8;
+}
+
+// Plaintext payload encrypted inside Double Ratchet (never seen by server)
+enum InnerMessageType {
+  INNER_TEXT = 0;
+  INNER_FILE = 1;
+}
+
+message InnerMessage {
+  InnerMessageType type         = 1;
+  string           text         = 2; // for INNER_TEXT
+  bytes            file_data    = 3; // for INNER_FILE
+  string           file_name    = 4; // for INNER_FILE
+  string           file_mime    = 5; // for INNER_FILE
+  string           reply_to_id  = 6; // hex message_id of the replied-to message (empty = no reply)
+}
+
+// Message delivery and read acknowledgment
+message MessageAck {
+  bytes message_id = 1;
+  bytes recipient_hash_id = 2;
+  bool delivered = 3;
+  bool read = 4;
+  uint64 timestamp = 5;
+  bytes dilithium_signature = 6;
+}
+
+message SendMessageResponse {
+  bool success = 1;
+  bytes message_id = 2;                                      
+  uint64 server_timestamp = 3;         
+  string error_message = 4;                                                                                   
+}
+
+message FetchMessagesRequest {                                                                                
+  bytes user_hash = 1;                                                             
+  uint64 since_timestamp = 2;                           
+  uint32 limit = 3;                                              
+  uint64 timestamp = 4;                                                                                       
+  bytes dilithium_signature = 5; 
+}
+                                                                             
+message FetchMessagesResponse {                                                                  
+  repeated ZenthSignalEnvelope messages = 1;                                              
+  repeated GroupMessage group_messages = 2;                                       
+  uint64 timestamp = 3;                                                                                       
+  uint32 remaining_count = 4; 
+}     

@@ -1,0 +1,98 @@
+// Signal Double Ratchet with post-quantum extensions
+syntax = "proto3";
+
+package zenth;
+
+import "keys.proto";
+
+// Ratchet chain state for message encryption
+message Chain {
+  bytes sender_ratchet_key = 1;
+  uint32 chain_key_index = 2;
+  bytes chain_key = 3;
+  repeated MessageKey message_keys = 4;
+}
+
+// Individual message encryption keys
+message MessageKey {
+  uint32 index = 1;
+  bytes cipher_key = 2;
+  bytes mac_key = 3;
+  bytes iv = 4;
+}
+
+// Post-quantum ratchet using Kyber KEM
+message PQRatchetState {
+  KEMKeyType kem_type = 1;
+  bytes current_pq_key = 2;
+  uint32 pq_ratchet_index = 3;
+  bytes pending_pq_key = 4;
+}
+
+// Complete session state with hybrid ratcheting
+message SessionState {
+  uint32 session_version = 1;
+  IdentityKey local_identity = 2;
+  IdentityKey remote_identity = 3;
+  bytes root_key = 4;
+  Chain sender_chain = 5;
+  repeated Chain receiver_chains = 6;
+  PQRatchetState pq_ratchet = 7;
+  uint32 previous_counter = 8;
+  uint32 remote_registration_id = 9;
+  uint32 local_registration_id = 10;
+  bool needs_refresh = 11;
+  uint64 last_refresh_timestamp = 12;
+}
+
+// Peer-to-peer session with user identifiers
+message Session {
+  bytes local_user_hash_id = 1;
+  bytes remote_user_hash_id = 2;
+  bytes session_id = 3;
+  SessionState state = 4;
+  uint64 created_timestamp = 5;
+  uint64 last_used_timestamp = 6;
+  bool is_active = 7;
+}
+
+// Local storage for all active sessions
+message SessionStore {
+  repeated Session sessions = 1;
+  bytes owner_hash_id = 2;
+}
+
+// Ephemeral pre-key for initial key exchange
+message PreKeyRecord {
+  uint32 id = 1;
+  bytes public_key = 2;
+  bytes private_key = 3;
+}
+
+// Signed pre-key with Dilithium signature
+message SignedPreKeyRecord {
+  uint32 id = 1;
+  bytes public_key = 2;
+  bytes private_key = 3;
+  bytes signature = 4;
+  uint64 timestamp = 5;
+}
+
+// Post-quantum KEM pre-key
+message PQPreKeyRecord {
+  uint32 id = 1;
+  KEMKeyType key_type = 2;
+  bytes public_key = 3;
+  bytes secret_key = 4;
+  uint64 timestamp = 5;
+}
+
+// Local storage for all pre-key types
+message PreKeyStore {
+  repeated PreKeyRecord pre_keys = 1;
+  repeated SignedPreKeyRecord signed_pre_keys = 2;
+  repeated PQPreKeyRecord pq_pre_keys = 3;
+  uint32 next_pre_key_id = 4;
+  uint32 next_signed_pre_key_id = 5;
+  uint32 next_pq_pre_key_id = 6;
+}

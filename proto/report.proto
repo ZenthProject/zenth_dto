@@ -1,0 +1,239 @@
+// Zenth Report System - Zero-knowledge abuse reporting                                                                  
+  // Reports are end-to-end encrypted and privacy-preserving                                                               
+  syntax = "proto3";                                                                                                       
+                                                                                                                           
+  package zenth;                                                                                                           
+                                                                                                                           
+  import "keys.proto";                                                                                                     
+                                                                                                                           
+  // Types of content that can be reported                                                                                 
+  enum ReportCategory {                                                                                                    
+      REPORT_CATEGORY_UNKNOWN = 0;                                                                                         
+      SPAM = 1;                      // Unsolicited messages, advertising                                                  
+      HARASSMENT = 2;                // Bullying, threats, targeted abuse                                                  
+      HATE_SPEECH = 3;               // Discrimination, hate content                                                       
+      ILLEGAL_CONTENT = 4;           // Content violating laws                                                             
+      IMPERSONATION = 5;             // Fake identity, pretending to be someone else                                       
+      SCAM = 6;                      // Fraud, phishing attempts                                                           
+      MALWARE = 7;                   // Malicious links or files                                                           
+      UNWANTED_CONTACT = 8;          // Persistent unwanted contact after blocking                                         
+      OTHER = 99;                    // Other violations                                                                   
+  }                                                                                                                        
+                                                                                                                           
+  // Severity level of the report                                                                                          
+  enum ReportSeverity {                                                                                                    
+      SEVERITY_UNKNOWN = 0;                                                                                                
+      LOW = 1;                       // Minor issue                                                                        
+      MEDIUM = 2;                    // Moderate concern                                                                   
+      HIGH = 3;                      // Serious violation                                                                  
+      CRITICAL = 4;                  // Immediate danger or illegal activity                                               
+  }                                                                                                                        
+                                                                                                                           
+  // Status of a report (for local tracking only)                                                                          
+  enum ReportStatus {                                                                                                      
+      STATUS_UNKNOWN = 0;                                                                                                  
+      PENDING = 1;                   // Report submitted, awaiting review                                                  
+      ACKNOWLEDGED = 2;              // Report received by network                                                         
+      RESOLVED = 3;                  // Action taken                                                                       
+      DISMISSED = 4;                 // Report found invalid                                                               
+  }                                                                                                                        
+                                                                                                                           
+  // Evidence type for cryptographic proof                                                                                 
+  enum EvidenceType {                                                                                                      
+      EVIDENCE_TYPE_UNKNOWN = 0;                                                                                           
+      MESSAGE_HASH = 1;              // Hash of offending message                                                          
+      MESSAGE_SIGNATURE = 2;         // Signature proving message origin                                                   
+      SCREENSHOT_HASH = 3;           // Hash of screenshot (stored locally)                                                
+      CONVERSATION_PROOF = 4;        // Merkle proof of conversation                                                       
+      TIMESTAMP_PROOF = 5;           // Proof of when violation occurred                                                   
+  }                                                                                                                        
+                                                                                                                           
+  // Cryptographic evidence attached to report                                                                             
+  message ReportEvidence {                                                                                                 
+      EvidenceType evidence_type = 1;                                                                                      
+      bytes data = 2;                // Hash or proof data                                                                 
+      bytes signature = 3;           // Dilithium signature proving authenticity                                           
+      uint64 timestamp = 4;          // When evidence was captured                                                         
+      bytes message_id = 5;          // Optional: ID of offending message                                                  
+  }                                                                                                                        
+                                                                                                                           
+  // Request to report a user                                                                                              
+  message ReportUserRequest {                                                                                              
+      // Reporter info (can be anonymous)                                                                                  
+      bytes reporter_hash = 1;       // Hash of reporter (zeroed if anonymous)                                             
+      bool anonymous = 2;            // If true, reporter identity is hidden                                               
+                                                                                                                           
+      // Target info                                                                                                       
+      bytes target_hash = 3;         // Hash of user being reported                                                        
+                                                                                                                           
+      // Report details                                                                                                    
+      ReportCategory category = 4;                                                                                         
+      ReportSeverity severity = 5;                                                                                         
+      bytes encrypted_description = 6;  // AES-256-GCM encrypted description                                               
+      bytes description_nonce = 7;      // Nonce for description decryption                                                
+                                                                                                                           
+      // Cryptographic evidence                                                                                            
+      repeated ReportEvidence evidence = 8;                                                                                
+                                                                                                                           
+      // Proof of interaction (proves reporter had contact with target)                                                    
+      bytes interaction_proof = 9;   // ZK proof that reporter received messages from target                               
+                                                                                                                           
+      // Request metadata                                                                                                  
+      uint64 timestamp = 10;                                                                                               
+      bytes request_id = 11;         // Unique report ID                                                                   
+      bytes dilithium_signature = 12; // Signature by reporter (or ephemeral key if anonymous)                             
+  }                                                                                                                        
+                                                                                                                           
+  // Response to report submission                                                                                         
+  message ReportUserResponse {                                                                                             
+      bool success = 1;                                                                                                    
+      bytes report_id = 2;           // Assigned report ID for tracking                                                    
+      string error_message = 3;                                                                                            
+      uint64 timestamp = 4;                                                                                                
+                                                                                                                           
+      // For anonymous reports, a one-time token to check status                                                           
+      bytes status_token = 5;                                                                                              
+  }                                                                                                                        
+                                                                                                                           
+  // Request to check report status (optional feature)                                                                     
+  message ReportStatusRequest {                                                                                            
+      bytes report_id = 1;                                                                                                 
+      bytes status_token = 2;        // Token received when report was submitted                                           
+      uint64 timestamp = 3;                                                                                                
+  }                                                                                                                        
+                                                                                                                           
+  // Response with report status                                                                                           
+  message ReportStatusResponse {                                                                                           
+      bool found = 1;                                                                                                      
+      ReportStatus status = 2;                                                                                             
+      string status_message = 3;     // Human-readable status                                                              
+      uint64 last_updated = 4;                                                                                             
+  }                                                                                                                        
+                                                                                                                           
+  // Block request - user wants to block another user locally                                                              
+  // This is stored locally, server only knows hash mappings                                                               
+  message BlockUserRequest {                                                                                               
+      bytes blocker_hash = 1;                                                                                              
+      bytes blocked_hash = 2;                                                                                              
+      uint64 timestamp = 3;                                                                                                
+      bytes dilithium_signature = 4;                                                                                       
+                                                                                                                           
+      // Optional: also report while blocking                                                                              
+      bool also_report = 5;                                                                                                
+      ReportCategory report_category = 6;                                                                                  
+  }                                                                                                                        
+                                                                                                                           
+  // Response to block request                                                                                             
+  message BlockUserResponse {                                                                                              
+      bool success = 1;                                                                                                    
+      string error_message = 2;                                                                                            
+      uint64 timestamp = 3;                                                                                                
+  }                                                                                                                        
+                                                                                                                           
+  // Batch report for multiple violations from same user                                                                   
+  message BatchReportRequest {                                                                                             
+      bytes reporter_hash = 1;                                                                                             
+      bool anonymous = 2;                                                                                                  
+      bytes target_hash = 3;                                                                                               
+                                                                                                                           
+      // Multiple categories if user violated multiple rules                                                               
+      repeated ReportCategory categories = 4;                                                                              
+      ReportSeverity severity = 5;                                                                                         
+                                                                                                                           
+      // Multiple evidence items                                                                                           
+      repeated ReportEvidence evidence = 6;                                                                                
+                                                                                                                           
+      bytes encrypted_description = 7;                                                                                     
+      bytes description_nonce = 8;                                                                                         
+                                                                                                                           
+      uint64 timestamp = 9;                                                                                                
+      bytes request_id = 10;                                                                                               
+      bytes dilithium_signature = 11;                                                                                      
+  }                                                                                                                        
+                                                                                                                           
+  // Batch report response                                                                                                 
+  message BatchReportResponse {                                                                                            
+      bool success = 1;                                                                                                    
+      bytes report_id = 2;                                                                                                 
+      int32 evidence_accepted = 3;   // Number of evidence items accepted                                                  
+      int32 evidence_rejected = 4;   // Number of evidence items rejected                                                  
+      string error_message = 5;                                                                                            
+      bytes status_token = 6;                                                                                              
+  }                                                                                                                        
+                                                                                                                           
+  // Group report - report abuse in a group                                                                                
+  message GroupReportRequest {                                                                                             
+      bytes reporter_hash = 1;                                                                                             
+      bool anonymous = 2;                                                                                                  
+      bytes group_id = 3;            // Group where abuse occurred                                                         
+      bytes target_hash = 4;         // User being reported (or empty for group itself)                                    
+                                                                                                                           
+      ReportCategory category = 5;                                                                                         
+      ReportSeverity severity = 6;                                                                                         
+                                                                                                                           
+      repeated ReportEvidence evidence = 7;                                                                                
+      bytes encrypted_description = 8;                                                                                     
+      bytes description_nonce = 9;                                                                                         
+                                                                                                                           
+      // Proof of group membership                                                                                         
+      bytes membership_proof = 10;                                                                                         
+                                                                                                                           
+      uint64 timestamp = 11;                                                                                               
+      bytes request_id = 12;                                                                                               
+      bytes dilithium_signature = 13;                                                                                      
+  }                                                                                                                        
+                                                                                                                           
+  // Group report response                                                                                                 
+  message GroupReportResponse {                                                                                            
+      bool success = 1;                                                                                                    
+      bytes report_id = 2;                                                                                                 
+      string error_message = 3;                                                                                            
+      bytes status_token = 4;                                                                                              
+  }                                                                                                                        
+                                                                                                                           
+  // Appeal a decision (if user was actioned and wants to contest)                                                         
+  message AppealRequest {                                                                                                  
+      bytes user_hash = 1;                                                                 
+      bytes original_report_id = 2;                                                           
+                                                                                                                           
+      bytes encrypted_appeal_text = 3;                                                                                     
+      bytes appeal_nonce = 4;                                                                                              
+                                                                                                                           
+      repeated ReportEvidence counter_evidence = 5;                                                                        
+                                                                                                                           
+      uint64 timestamp = 6;                                                                                                
+      bytes request_id = 7;                                                                                                
+      bytes dilithium_signature = 8;                                                                                       
+  }                                                                                                                        
+                                                                                                                           
+  // Appeal response                                                                                                       
+  message AppealResponse {                                                                                                 
+      bool success = 1;                                                                                                    
+      bytes appeal_id = 2;                                                                                                 
+      string error_message = 3;                                                                                            
+      uint64 timestamp = 4;                                                                                                
+  }                                                                                                                        
+                                                                                                                           
+  // Local storage for reports (not sent over network)                                                                     
+  message StoredReport {                                                                                                   
+      bytes report_id = 1;                                                                                                 
+      bytes target_hash = 2;                                                                                               
+      ReportCategory category = 3;                                                                                         
+      ReportSeverity severity = 4;                                                                                         
+      ReportStatus status = 5;                                                                                             
+      string description = 6;                                                    
+      repeated ReportEvidence evidence = 7;                                                                                
+      uint64 created_at = 8;                                                                                               
+      uint64 updated_at = 9;                                                                                               
+      bytes status_token = 10;                                                                                             
+  }                                                                                                                        
+                                                                                                                           
+  // Local storage for blocked users                                                                                       
+  message StoredBlockedUser {                                                                                              
+      bytes user_hash = 1;                                                                                                 
+      string pseudo = 2;                                                                              
+      uint64 blocked_at = 3;                                                                                               
+      ReportCategory reason = 4;                                                                  
+      bool reported = 5;                                                                              
+      bytes report_id = 6;                                                            
+  }

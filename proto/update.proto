@@ -1,0 +1,35 @@
+// Zenth update distribution over the relay network
+syntax = "proto3";
+
+package zenth;
+
+// Request the update manifest — allowed even for outdated versions
+message UpdateManifestRequest {
+  string current_version = 1;
+  string platform        = 2; // e.g. "linux-x86_64-deb", "linux-x86_64-appimage"
+}
+
+// Signed manifest describing the latest release
+message UpdateManifestResponse {
+  string latest_version = 1;
+  string sha256         = 2; // hex-encoded SHA256 of the full binary
+  uint64 size           = 3; // binary size in bytes
+  bytes  signature      = 4; // Ed25519 signature over (version || sha256)
+  string notes          = 5; // changelog / release notes
+  string platform       = 6; // e.g. "linux-x86_64", "windows-x86_64"
+}
+
+// Request a chunk of the update binary
+message UpdateChunkRequest {
+  string current_version = 1;
+  uint64 offset          = 2; // byte offset in the binary
+  uint32 chunk_size      = 3; // requested chunk size in bytes
+}
+
+// A chunk of the update binary, encrypted like any other payload
+message UpdateChunkResponse {
+  uint64 offset   = 1;
+  bytes  data     = 2; // encrypted chunk (AES-256-GCM, same as file transfers)
+  bool   is_last  = 3;
+  uint64 total    = 4; // total binary size (for progress display)
+}

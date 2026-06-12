@@ -1,0 +1,177 @@
+// Decentralized group management with LMS signatures
+syntax = "proto3";
+
+package zenth;
+
+import "keys.proto";
+
+// Group access and visibility levels
+enum GroupType {
+  GROUP_TYPE_UNKNOWN = 0;
+  PRIVATE_GROUP = 1;
+  PUBLIC_GROUP = 2;
+  CHANNEL = 3;
+}
+
+// Member permission levels
+enum GroupRole {
+  ROLE_UNKNOWN = 0;
+  MEMBER = 1;
+  ADMIN = 2;
+  OWNER = 3;
+}
+
+// Individual group member with LMS key
+message GroupMember {
+  bytes user_hash_id = 1;
+  GroupRole role = 2;
+  GroupKey member_lms_key = 3;
+  bytes pre_key_bundle = 4;
+  uint64 joined_timestamp = 5;
+  bytes invited_by = 6;
+}
+
+// Complete group state snapshot
+message GroupState {
+  bytes group_id = 1;
+  string group_name = 2;
+  GroupType group_type = 3;
+  GroupKey master_lms_key = 4;
+  repeated GroupMember members = 5;
+  uint32 member_count = 6;
+  bytes sender_key_distribution_message = 7;
+  uint32 sender_key_chain_id = 8;
+  uint64 created_timestamp = 9;
+  bytes created_by = 10;
+  uint64 last_updated_timestamp = 11;
+  uint32 version = 12;
+}
+
+// Operations that modify group state
+enum GroupOperation {
+  OPERATION_UNKNOWN = 0;
+  CREATE_GROUP = 1;
+  ADD_MEMBER = 2;
+  REMOVE_MEMBER = 3;
+  PROMOTE_MEMBER = 4;
+  DEMOTE_MEMBER = 5;
+  UPDATE_NAME = 6;
+  UPDATE_KEY = 7;
+  LEAVE_GROUP = 8;
+}
+
+// Versioned group state change with LMS signature
+message GroupChange {
+  bytes group_id = 1;
+  GroupOperation operation = 2;
+  bytes initiator_hash_id = 3;
+  oneof change_details {
+    CreateGroupDetails create = 4;
+    AddMemberDetails add_member = 5;
+    RemoveMemberDetails remove_member = 6;
+    UpdateRoleDetails update_role = 7;
+    UpdateNameDetails update_name = 8;
+    UpdateKeyDetails update_key = 9;
+  }
+  bytes lms_signature = 10;
+  uint64 timestamp = 11;
+  uint32 previous_version = 12;
+  uint32 new_version = 13;
+}
+
+message CreateGroupDetails {
+  string group_name = 1;
+  GroupType group_type = 2;
+  GroupKey master_lms_key = 3;
+  repeated bytes initial_members = 4;
+}
+
+message AddMemberDetails {
+  bytes new_member_hash_id = 1;
+  GroupRole initial_role = 2;
+  GroupKey member_lms_key = 3;
+  bytes pre_key_bundle = 4;
+}
+
+message RemoveMemberDetails {
+  bytes removed_member_hash_id = 1;
+  string reason = 2;
+}
+
+message UpdateRoleDetails {
+  bytes target_member_hash_id = 1;
+  GroupRole old_role = 2;
+  GroupRole new_role = 3;
+}
+
+message UpdateNameDetails {
+  string old_name = 1;
+  string new_name = 2;
+}
+
+message UpdateKeyDetails {
+  GroupKey new_master_key = 1;
+  bytes new_sender_key_distribution = 2;
+  uint32 new_chain_id = 3;
+  string reason = 4;
+}
+
+// Group invitation with encrypted state
+message GroupInviteMessage {
+  bytes group_id = 1;
+  bytes inviter_hash_id = 2;
+  bytes invitee_hash_id = 3;
+  bytes encrypted_group_state = 4;
+  GroupKey invitee_lms_key = 5;
+  bytes lms_signature = 6;
+  uint64 timestamp = 7;
+  uint64 expiry_timestamp = 8;
+}
+
+// Invitation acceptance or rejection response
+message GroupInviteResponse {
+  bytes group_id = 1;
+  bytes invitee_hash_id = 2;
+  bool accepted = 3;
+  bytes pre_key_bundle = 4;
+  bytes dilithium_signature = 5;
+  uint64 timestamp = 6;
+}
+
+// Signal-compatible sender key state for group messages
+message SenderKeyState {
+  uint32 sender_key_id = 1;
+  uint32 chain_id = 2;
+
+  message SenderChainKey {
+    uint32 iteration = 1;
+    bytes chain_key = 2;
+  }
+
+  message SenderMessageKey {
+    uint32 iteration = 1;
+    bytes key = 2;
+    bytes iv = 3;
+  }
+
+  SenderChainKey chain_key = 3;
+  repeated SenderMessageKey message_keys = 4;
+  GroupKey signing_key = 5;
+}
+
+// Sender key distribution for efficient group messaging
+message SenderKeyDistributionMessage {
+  bytes group_id = 1;
+  uint32 chain_id = 2;
+  uint32 iteration = 3;
+  bytes chain_key = 4;
+  bytes signing_key = 5;
+  bytes lms_signature = 6;
+}
+
+// Local storage for all user's groups
+message GroupStore {
+  repeated GroupState groups = 1;
+  bytes owner_hash_id = 2;
+  map<string, SenderKeyState> sender_key_states = 3;
+}

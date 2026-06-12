@@ -1,0 +1,154 @@
+// Post-quantum hybrid key structures
+syntax = "proto3";
+
+package zenth;
+
+// Post-quantum KEM algorithms
+enum KEMKeyType {
+  KEM_KEY_TYPE_UNKNOWN = 0;
+  KYBER_768 = 0x07;
+  KYBER_1024 = 0x08;
+  MLKEM_1024 = 0x0A;
+}
+
+// Post-quantum signature algorithms
+enum SignatureKeyType {
+  SIGNATURE_KEY_TYPE_UNKNOWN = 0;
+  DILITHIUM_2 = 0x10;
+  DILITHIUM_3 = 0x11;
+  DILITHIUM_5 = 0x12;
+}
+
+// Hash-based signature schemes for group operations
+enum GroupKeyType {
+  GROUP_KEY_TYPE_UNKNOWN = 0;
+  LMS_SHA256_M32_H10 = 0x20;
+  LMS_SHA256_M32_H15 = 0x21;
+  LMS_SHA256_M32_H20 = 0x22;
+}
+
+// Long-term identity key using Dilithium
+message IdentityKey {
+  SignatureKeyType key_type = 1;
+  bytes public_key = 2;
+}
+
+// KEM public key for post-quantum key exchange
+message KEMPublicKey {
+  KEMKeyType key_type = 1;
+  bytes public_key = 2;
+}
+
+// Signal-compatible pre-key bundle with post-quantum extensions
+message PreKeyBundle {
+  bytes user_hash_id = 1;
+  uint32 registration_id = 2;
+  IdentityKey identity_key = 3;
+  uint32 pre_key_id = 4;
+  bytes pre_key_public = 5;
+  uint32 signed_pre_key_id = 6;
+  bytes signed_pre_key_public = 7;
+  bytes signed_pre_key_signature = 8;
+  uint32 pq_pre_key_id = 9;
+  KEMPublicKey pq_pre_key_public = 10;
+  uint32 pq_last_resort_key_id = 11;
+  KEMPublicKey pq_last_resort_key_public = 12;
+}
+
+// LMS key for group signature operations
+message GroupKey {
+  GroupKeyType key_type = 1;
+  bytes public_key = 2;
+  bytes tree_identifier = 3;
+}
+
+// Group invitation message with LMS signature
+message GroupInvitation {
+  bytes group_id = 1;
+  bytes inviter_hash_id = 2;
+  bytes invitee_hash_id = 3;
+  GroupKey group_key = 4;
+  bytes lms_signature = 5;
+  uint64 timestamp = 6;
+}
+
+// === Pre-key management messages ===
+
+// Single one-time pre-key
+message PreKey {
+  uint32 pre_key_id = 1;
+  bytes public_key = 2;  // X25519 public key (32 bytes)
+}
+
+// Signed pre-key with Dilithium signature
+message SignedPreKey {
+  uint32 signed_pre_key_id = 1;
+  bytes public_key = 2;  // X25519 public key (32 bytes)
+  bytes signature = 3;   // Dilithium signature over public_key
+}
+
+// Kyber pre-key (post-quantum)
+message KyberPreKey {
+  uint32 pq_pre_key_id = 1;
+  bytes public_key = 2;  // Kyber1024 public key (1568 bytes)
+}
+
+// Upload pre-keys to server
+message UploadPreKeysRequest {
+  bytes username_hash = 1;
+  repeated PreKey one_time_prekeys = 2;
+  SignedPreKey signed_prekey = 3;
+  KyberPreKey kyber_prekey = 4;
+  KyberPreKey kyber_last_resort = 5;
+  bytes auth_signature = 6;  // Dilithium signature for auth
+  uint64 timestamp = 7;
+}
+
+message UploadPreKeysResponse {
+  bool success = 1;
+  string error_message = 2;
+  uint32 prekeys_stored = 3;
+}
+
+// Fetch pre-key bundle for X3DH
+message FetchPreKeyBundleRequest {
+  bytes requester_hash = 1;
+  bytes target_hash = 2;
+  bytes auth_signature = 3;
+  uint64 timestamp = 4;
+}
+
+message FetchPreKeyBundleResponse {
+  bool success = 1;
+  PreKeyBundle bundle = 2;
+  string error_message = 3;
+}
+
+// Check remaining pre-key count
+message CheckPreKeyCountRequest {
+  bytes username_hash = 1;
+  bytes auth_signature = 2;
+  uint64 timestamp = 3;
+}
+
+message CheckPreKeyCountResponse {
+  bool success = 1;
+  uint32 one_time_prekey_count = 2;
+  bool has_signed_prekey = 3;
+  bool has_kyber_prekey = 4;
+  string error_message = 5;
+}
+
+// Replenish one-time pre-keys
+message ReplenishPreKeysRequest {
+  bytes username_hash = 1;
+  repeated PreKey new_prekeys = 2;
+  bytes auth_signature = 3;
+  uint64 timestamp = 4;
+}
+
+message ReplenishPreKeysResponse {
+  bool success = 1;
+  uint32 total_prekeys = 2;
+  string error_message = 3;
+}
