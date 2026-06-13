@@ -111,8 +111,24 @@ message GroupMessage {
 
 // Plaintext payload encrypted inside Double Ratchet (never seen by server)
 enum InnerMessageType {
-  INNER_TEXT = 0;
-  INNER_FILE = 1;
+  INNER_TEXT       = 0;
+  INNER_FILE       = 1;
+  INNER_FILE_OFFER = 2; // P2P direct transfer offer (no file data, just metadata + key)
+}
+
+// Metadata for a P2P file transfer — transmitted E2EE, never seen by server.
+// The file_key is an AES-256-GCM key used to encrypt the actual chunks
+// exchanged over the WebSocket relay.
+message InnerFileOffer {
+  bytes  transfer_id = 1; // 16 random bytes identifying this transfer
+  string filename    = 2;
+  uint64 file_size   = 3; // total plaintext file size
+  string mime_type   = 4;
+  uint32 chunk_count = 5;
+  uint32 chunk_size  = 6; // bytes per chunk (last chunk may be smaller)
+  bytes  file_key    = 7; // AES-256-GCM key (32 bytes)
+  bytes  file_iv     = 8; // AES-256-GCM nonce (12 bytes)
+  bytes  file_hash   = 9; // SHA-256 of plaintext file (integrity)
 }
 
 message InnerMessage {
@@ -121,7 +137,8 @@ message InnerMessage {
   bytes            file_data    = 3; // for INNER_FILE
   string           file_name    = 4; // for INNER_FILE
   string           file_mime    = 5; // for INNER_FILE
-  string           reply_to_id  = 6; // hex message_id of the replied-to message (empty = no reply)
+  string           reply_to_id  = 6;
+  InnerFileOffer   file_offer   = 7; // for INNER_FILE_OFFER
 }
 
 // Message delivery and read acknowledgment

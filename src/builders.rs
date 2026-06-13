@@ -1,6 +1,7 @@
 //! Builders pour construire facilement les structures protobuf
 
-use crate::{helpers::*, *};
+use crate::*;
+use crate::helpers::*;
 
 /// Builder pour IdentityKey
 pub struct IdentityKeyBuilder {
@@ -242,14 +243,13 @@ impl GroupBuilder {
     }
 
     pub fn build(self) -> GroupState {
-        let member_count = self.members.len() as u32;
         GroupState {
             group_id: generate_message_id(),
             group_name: self.group_name,
             group_type: self.group_type as i32,
             master_lms_key: None,
             members: self.members,
-            member_count,
+            member_count: self.members.len() as u32,
             sender_key_distribution_message: Vec::new(),
             sender_key_chain_id: 1,
             created_timestamp: current_timestamp(),

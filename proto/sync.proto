@@ -4,10 +4,13 @@ package zenth;
 // ── SYNC_PUSH_BLOB (21) ──────────────────────────────────────────────────────
 
 message SyncPushBlobRequest {
-    bytes for_device_dilithium_pubkey = 1; // pubkey du NOUVEL appareil (destinataire)
-    bytes ciphertext                  = 2; // ciphertext Kyber (Sync Key chiffrée)
-    bytes signature                   = 3; // signature Dilithium de l'APPAREIL DE CONFIANCE sur ciphertext
-    uint64 ttl_secs                   = 4; // durée de vie (max 3600)
+    bytes  for_device_dilithium_pubkey = 1; // clé de lookup (pubkey Dilithium ou pairing_id temporaire)
+    bytes  ciphertext                  = 2; // contenu chiffré - stocké tel quel en DB
+    bytes  signature                   = 3; // signature E2E du contenu - stockée et renvoyée au client final
+    uint64 ttl_secs                    = 4; // durée de vie (max 3600)
+    bytes  sender_dilithium_pubkey     = 5; // pubkey RÉELLE de l'expéditeur (pour l'auth serveur)
+    uint64 timestamp                   = 6; // anti-replay
+    bytes  auth_signature              = 7; // sign(for_device_dilithium_pubkey || ciphertext || timestamp) par sender - auth serveur uniquement
 }
 
 message SyncPushBlobResponse {
@@ -18,7 +21,10 @@ message SyncPushBlobResponse {
 // ── SYNC_FETCH_BLOB (22) ─────────────────────────────────────────────────────
 
 message SyncFetchBlobRequest {
-    bytes for_device_dilithium_pubkey = 1; // pubkey du NOUVEL appareil (clé primaire)
+    bytes  for_device_dilithium_pubkey  = 1; // clé de lookup (peut être un pairing_id temporaire)
+    bytes  signature                    = 2; // sign(for_device_dilithium_pubkey || timestamp) par le requester
+    uint64 timestamp                    = 3; // anti-replay
+    bytes  requester_dilithium_pubkey   = 4; // pubkey RÉELLE du demandeur - si vide, utilise le champ 1
 }
 
 message SyncFetchBlobResponse {
@@ -31,7 +37,10 @@ message SyncFetchBlobResponse {
 // ── SYNC_DELETE_BLOB (23) ────────────────────────────────────────────────────
 
 message SyncDeleteBlobRequest {
-    bytes for_device_dilithium_pubkey = 1;
+    bytes  for_device_dilithium_pubkey  = 1;
+    bytes  signature                    = 2; // sign(for_device_dilithium_pubkey || timestamp) par le requester
+    uint64 timestamp                    = 3; // anti-replay
+    bytes  requester_dilithium_pubkey   = 4; // pubkey RÉELLE du demandeur - si vide, utilise le champ 1
 }
 
 message SyncDeleteBlobResponse {
@@ -47,6 +56,9 @@ message RelayPushRequest {
     bytes  ciphertext                  = 2; // ChaCha20-Poly1305(sync_key, nonce, payload_json)
     bytes  nonce                       = 3; // 12 octets aléatoires
     uint64 ttl_secs                    = 4; // durée de vie (max 86400)
+    bytes  sender_dilithium_pubkey     = 5; // pubkey de l'expéditeur (anonyme, pas liée à un compte)
+    bytes  sender_signature            = 6; // sign(for_device_dilithium_pubkey || timestamp) par l'expéditeur
+    uint64 timestamp                   = 7; // anti-replay
 }
 
 message RelayPushResponse {
@@ -62,10 +74,12 @@ message RelayFetchRequest {
     bytes  for_device_dilithium_pubkey = 1; // notre propre clé (notre mailbox)
     int64  since_id                    = 2; // id > since_id (0 = tout récupérer)
     uint32 limit                       = 3; // max entrées (défaut 50)
+    bytes  signature                   = 4; // sign(for_device_dilithium_pubkey || since_id || timestamp) par le device propriétaire
+    uint64 timestamp                   = 5; // anti-replay
 }
 
 message RelayEntry {
-    int64 id        = 1;
+    int64 id         = 1;
     bytes ciphertext = 2;
     bytes nonce      = 3;
 }
@@ -80,8 +94,10 @@ message RelayFetchResponse {
 // Supprime les entrées traitées (up_to_id inclus) de la mailbox.
 
 message RelayAckRequest {
-    bytes for_device_dilithium_pubkey = 1;
-    int64 up_to_id                    = 2;
+    bytes  for_device_dilithium_pubkey = 1;
+    int64  up_to_id                    = 2;
+    bytes  signature                   = 3; // sign(for_device_dilithium_pubkey || up_to_id || timestamp) par le device propriétaire
+    uint64 timestamp                   = 4; // anti-replay
 }
 
 message RelayAckResponse {

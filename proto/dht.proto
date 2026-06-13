@@ -48,6 +48,11 @@ enum Method {
     // Account recovery
     PUBLISH_RECOVERY_KEY = 29;
     RECOVERY_CLAIM = 30;
+    // WebSocket-only: P2P file transfer relay
+    WS_FILE_AVAILABLE     = 31; // sender: "j'ai ce fichier prêt"
+    WS_FILE_CHUNK_REQUEST = 32; // destinataire → DHT → expéditeur: donne-moi le chunk N
+    WS_FILE_CHUNK         = 33; // expéditeur → DHT → destinataire: voici le chunk N
+    WS_CHECK_ONLINE       = 34; // vérifier si un utilisateur est connecté
 }
 
 // Requête DHT unifiée - un seul endpoint, méthode cachée dans le payload

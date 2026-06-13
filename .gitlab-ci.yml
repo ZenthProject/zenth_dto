@@ -1,4 +1,4 @@
-image: rust:1.87
+image: rust:latest
 
 variables:
   DEBIAN_FRONTEND: "noninteractive"

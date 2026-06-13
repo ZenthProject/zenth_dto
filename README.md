@@ -1055,12 +1055,14 @@ La bibliothèque fournit des builders fluent dans `src/builders.rs`:
 use zenth_dto::builders::*;
 
 // Builder pour IdentityKey
-let key = IdentityKeyBuilder::dilithium3()
+let key = IdentityKeyBuilder::new()
+    .key_type(SignatureKeyType::Dilithium3)
     .public_key(pub_key_bytes)
     .build();
 
-// Builder pour PreKeyBundle (prend un username, calcule le hash en interne)
-let bundle = PreKeyBundleBuilder::new("alice")
+// Builder pour PreKeyBundle
+let bundle = PreKeyBundleBuilder::new()
+    .user_hash_id(hash)
     .registration_id(12345)
     .identity_key(key)
     .pre_key(1, pre_key_pub)
@@ -1068,10 +1070,12 @@ let bundle = PreKeyBundleBuilder::new("alice")
     .pq_pre_key(1, kyber_pub)
     .build();
 
-// Builder pour AuthChallenge (challenge_id et nonce générés automatiquement)
+// Builder pour AuthChallenge
 let challenge = AuthChallengeBuilder::new()
-    .proof_type(ZkpType::Plonk)
-    .difficulty(128)
+    .challenge_id(id)
+    .nonce(nonce)
+    .required_proof_type(ZkpType::Plonk)
+    .difficulty(3)
     .build();
 ```
 

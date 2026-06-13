@@ -2,7 +2,5 @@ pub mod zenth {
     tonic::include_proto!("zenth");
 }
 
-pub mod helpers;
-pub mod builders;
-
+// Re-export for convenience
 pub use zenth::*;

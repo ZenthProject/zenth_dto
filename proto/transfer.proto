@@ -1,0 +1,35 @@
+// P2P file transfer relay messages — WebSocket only, never stored on server.
+syntax = "proto3";
+
+package zenth;
+
+// Sender → DHT: "j'ai ce transfert prêt, relayez les requêtes de chunks vers moi"
+message WsFileAvailableRequest {
+    bytes transfer_id = 1; // 16 bytes, aléatoire
+}
+
+// Destinataire → DHT → Expéditeur: demande de chunk
+message WsFileChunkRequest {
+    bytes  transfer_id    = 1;
+    uint32 chunk_index    = 2;
+    bytes  requester_hash = 3; // hash du destinataire (pour router la réponse)
+}
+
+// Expéditeur → DHT → Destinataire: chunk de données chiffrées
+message WsFileChunkResponse {
+    bytes  transfer_id    = 1;
+    uint32 chunk_index    = 2;
+    bytes  chunk_data     = 3; // chunk chiffré AES-256-GCM
+    bytes  recipient_hash = 4; // DHT utilise ce champ pour router
+    uint32 total_chunks   = 5;
+}
+
+// Client → DHT: vérifier si un utilisateur est connecté via WebSocket
+message WsCheckOnlineRequest {
+    bytes target_hash = 1;
+}
+
+// DHT → Client: réponse de disponibilité
+message WsCheckOnlineResponse {
+    bool online = 1;
+}

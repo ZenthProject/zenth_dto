@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "proto/update.proto",
                 "proto/sync.proto",
                 "proto/recovery.proto",
+                "proto/transfer.proto",
             ],
             &["proto"],
         )?;

@@ -60,6 +60,9 @@ enum NotificationType {
     FRIEND_REQUEST_ACCEPTED = 2;
     FRIEND_REQUEST_REJECTED = 3;
     MESSAGE_RECEIVED = 4;
+    // P2P file transfer relay
+    FILE_CHUNK_REQUEST = 5; // DHT → expéditeur: le destinataire veut le chunk N
+    FILE_CHUNK         = 6; // DHT → destinataire: voici le chunk N
 }
 
 // WebSocket notification envelope
